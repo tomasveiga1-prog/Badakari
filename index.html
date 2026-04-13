@@ -62,10 +62,7 @@
   .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-hint); margin-bottom: 6px; font-weight: 500; }
   .metric-value { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; font-family: var(--mono); }
   .metric-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
-  .metric-card.accent { background: var(--text); border-color: var(--text); }
-  .metric-card.accent .metric-label { color: rgba(255,255,255,0.5); }
-  .metric-card.accent .metric-value { color: #5DCAA5; }
-  .metric-card.accent .metric-sub { color: rgba(255,255,255,0.4); }
+
 
   /* TABS */
   .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
@@ -116,6 +113,8 @@
   .badge-low::before { background: var(--warn); }
   .badge-out { background: #F5F3F0; color: var(--text-hint); }
   .badge-out::before { background: var(--text-hint); }
+  .badge-sold { background: #FDECEA; color: #A32D2D; }
+  .badge-sold::before { background: #A32D2D; }
 
   /* EMPTY STATE */
   .empty-state { text-align: center; padding: 4rem 2rem; }
@@ -227,7 +226,7 @@
       <table>
         <thead>
           <tr>
-            <th>Prenda</th><th>Marca</th><th>Talle</th><th>Color</th>
+            <th>Prenda</th><th>Marca</th><th>Talle</th><th>Color</th><th>Ingreso</th>
             <th>Stock</th><th>Mayorista</th><th>Venta</th><th>Ganancia</th><th>Estado</th><th></th>
           </tr>
         </thead>
@@ -360,11 +359,18 @@ function saveItem() {
     pventa: parseFloat(document.getElementById('f-pventa').value) || 0,
     stock: parseInt(document.getElementById('f-stock').value) || 0,
     notas: document.getElementById('f-notas').value.trim(),
-    fecha: editIdx != null ? data[editIdx].fecha : new Date().toLocaleDateString('es-AR')
+    fecha: editIdx != null ? data[editIdx].fecha : new Date().toLocaleDateString('es-AR'),
+    vendido: editIdx != null ? data[editIdx].vendido : false
   };
   if (editIdx != null) { data[editIdx] = item; toast('Prenda actualizada'); }
   else { data.push(item); toast('Prenda agregada'); }
   save(); render(); closeModal();
+}
+
+function marcarVendido(idx) {
+  data[idx].vendido = !data[idx].vendido;
+  save(); render();
+  toast(data[idx].vendido ? 'Marcada como vendida' : 'Repuesta al stock');
 }
 
 function deleteItem(idx) {
@@ -398,13 +404,13 @@ function render() {
 
   const tbody = document.getElementById('tabla');
   if (data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state">
       <div class="empty-icon">👕</div>
       <div class="empty-title">Todavía no cargaste ninguna prenda</div>
       <div class="empty-sub">Hacé clic en "+ Agregar" para empezar</div>
     </div></td></tr>`;
   } else if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state">
       <div class="empty-icon">🔍</div>
       <div class="empty-title">Sin resultados</div>
       <div class="empty-sub">Probá cambiando el filtro</div>
@@ -413,17 +419,27 @@ function render() {
     tbody.innerHTML = filtered.map(d => {
       const gan = d.pventa - d.pmay;
       const ganPct = d.pmay > 0 ? Math.round(gan / d.pmay * 100) : 0;
-      return `<tr>
+      const estadoBadge = d.vendido
+        ? '<span class="badge badge-sold">Vendido</span>'
+        : (d.stock === 0 ? '<span class="badge badge-out">Sin stock</span>'
+          : d.stock <= 2 ? '<span class="badge badge-low">Stock bajo</span>'
+          : '<span class="badge badge-ok">En stock</span>');
+      const btnVender = !d.vendido
+        ? `<button class="btn-icon" onclick="marcarVendido(${d._i})" title="Marcar como vendido" style="font-size:12px">Vendido</button>`
+        : `<button class="btn-icon" onclick="marcarVendido(${d._i})" title="Revertir a en stock" style="font-size:11px;color:var(--accent)">Reponer</button>`;
+      return `<tr style="${d.vendido ? 'opacity:0.55' : ''}">
         <td><div class="td-name">${d.tipo}</div>${d.notas ? `<div class="td-sub">${d.notas}</div>` : ''}</td>
         <td>${d.marca}</td>
         <td><strong style="font-weight:500">${d.talle}</strong></td>
         <td>${d.color || '—'}</td>
+        <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${d.fecha || '—'}</td>
         <td class="td-mono">${d.stock}</td>
         <td class="td-mono">$${fmt(d.pmay)}</td>
         <td class="td-mono">$${fmt(d.pventa)}</td>
         <td class="td-profit">$${fmt(gan)} <span style="font-size:11px;opacity:0.6">${ganPct}%</span></td>
-        <td>${badge(d.stock)}</td>
-        <td style="white-space:nowrap">
+        <td>${estadoBadge}</td>
+        <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
+          ${btnVender}
           <button class="btn-icon" onclick="openModal(${d._i})" title="Editar">✎</button>
           <button class="btn-icon" onclick="deleteItem(${d._i})" title="Eliminar" style="color:#C0392B">✕</button>
         </td>
@@ -442,7 +458,7 @@ function renderMetrics() {
   document.getElementById('metrics').innerHTML = `
     <div class="metric-card"><div class="metric-label">Prendas distintas</div><div class="metric-value">${data.length}</div><div class="metric-sub">${total} unidades en total</div></div>
     <div class="metric-card"><div class="metric-label">Invertido (mayorista)</div><div class="metric-value">$${fmt(valMay)}</div><div class="metric-sub">costo total del stock</div></div>
-    <div class="metric-card accent"><div class="metric-label">Valor a precio venta</div><div class="metric-value">$${fmt(valVenta)}</div><div class="metric-sub">si vendés todo</div></div>
+    <div class="metric-card"><div class="metric-label">Valor a precio venta</div><div class="metric-value">$${fmt(valVenta)}</div><div class="metric-sub">si vendés todo</div></div>
     <div class="metric-card"><div class="metric-label">Ganancia potencial</div><div class="metric-value" style="color:var(--accent)">$${fmt(gan)}</div><div class="metric-sub">${valMay > 0 ? Math.round(gan/valMay*100) : 0}% de margen</div></div>
   `;
 }
