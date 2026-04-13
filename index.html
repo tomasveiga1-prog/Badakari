@@ -216,7 +216,7 @@
         <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option>
         <option>32</option><option>34</option><option>36</option><option>38</option><option>40</option><option>42</option><option>44</option>
       </select>
-      <select class="filter" id="f-stock" onchange="render()">
+      <select class="filter" id="filter-stock" onchange="render()">
         <option value="">Todo el stock</option>
         <option value="low">Solo stock bajo</option>
         <option value="out">Sin stock</option>
@@ -391,7 +391,7 @@ function render() {
   const search = document.getElementById('search').value.toLowerCase();
   const fTipo = document.getElementById('f-tipo').value;
   const fTalle = document.getElementById('f-talle').value;
-  const fStock = document.getElementById('f-stock').value;
+  const fStock = document.getElementById('filter-stock').value;
 
   let filtered = data.map((d,i) => ({...d, _i: i})).filter(d => {
     const txt = (d.tipo+d.marca+d.color+d.notas).toLowerCase();
