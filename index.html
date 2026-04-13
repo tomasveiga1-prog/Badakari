@@ -398,7 +398,7 @@ function render() {
     const matchSearch = !search || txt.includes(search);
     const matchTipo = !fTipo || d.tipo === fTipo;
     const matchTalle = !fTalle || d.talle === fTalle;
-    const matchStock = !fStock || (fStock === 'low' && d.stock > 0 && d.stock <= 2) || (fStock === 'out' && d.stock === 0);
+    const matchStock = !fStock || (fStock === 'low' && !d.vendido && (parseInt(d.stock)||0) > 0 && (parseInt(d.stock)||0) <= 2) || (fStock === 'out' && !d.vendido && (parseInt(d.stock)||0) === 0);
     return matchSearch && matchTipo && matchTalle && matchStock;
   });
 
@@ -419,10 +419,11 @@ function render() {
     tbody.innerHTML = filtered.map(d => {
       const gan = d.pventa - d.pmay;
       const ganPct = d.pmay > 0 ? Math.round(gan / d.pmay * 100) : 0;
+      const stockNum = parseInt(d.stock) || 0;
       const estadoBadge = d.vendido
         ? '<span class="badge badge-sold">Vendido</span>'
-        : (d.stock === 0 ? '<span class="badge badge-out">Sin stock</span>'
-          : d.stock <= 2 ? '<span class="badge badge-low">Stock bajo</span>'
+        : (stockNum === 0 ? '<span class="badge badge-out">Sin stock</span>'
+          : stockNum <= 2 ? '<span class="badge badge-low">Stock bajo</span>'
           : '<span class="badge badge-ok">En stock</span>');
       const btnVender = !d.vendido
         ? `<button class="btn-icon" onclick="marcarVendido(${d._i})" title="Marcar como vendido" style="font-size:12px">Vendido</button>`
@@ -451,9 +452,10 @@ function render() {
 }
 
 function renderMetrics() {
-  const total = data.reduce((s,d) => s + d.stock, 0);
-  const valMay = data.reduce((s,d) => s + d.pmay * d.stock, 0);
-  const valVenta = data.reduce((s,d) => s + d.pventa * d.stock, 0);
+  const activos = data.filter(d => !d.vendido);
+  const total = activos.reduce((s,d) => s + (parseInt(d.stock) || 0), 0);
+  const valMay = activos.reduce((s,d) => s + d.pmay * (parseInt(d.stock) || 0), 0);
+  const valVenta = activos.reduce((s,d) => s + d.pventa * (parseInt(d.stock) || 0), 0);
   const gan = valVenta - valMay;
   document.getElementById('metrics').innerHTML = `
     <div class="metric-card"><div class="metric-label">Prendas distintas</div><div class="metric-value">${data.length}</div><div class="metric-sub">${total} unidades en total</div></div>
@@ -464,7 +466,7 @@ function renderMetrics() {
 }
 
 function renderAlerts() {
-  const bajos = data.filter(d => d.stock > 0 && d.stock <= 2);
+  const bajos = data.filter(d => !d.vendido && (parseInt(d.stock) || 0) > 0 && (parseInt(d.stock) || 0) <= 2);
   const sec = document.getElementById('alert-low');
   if (bajos.length === 0) { sec.style.display = 'none'; return; }
   sec.style.display = '';
