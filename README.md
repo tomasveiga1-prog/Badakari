@@ -1,0 +1,2 @@
+# Badakari
+Badakari Stock
